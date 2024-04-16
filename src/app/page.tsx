@@ -3,6 +3,8 @@ import Link from "next/link";
 import { CreatePost } from "~/app/_components/create-post";
 import { api } from "~/trpc/server";
 
+import { UserButton } from "@clerk/nextjs";
+
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
 
@@ -43,6 +45,11 @@ export default async function Home() {
         </div>
 
         <CrudShowcase />
+
+        <div className="w-16 h-16">
+          <UserButton />
+        </div>
+
       </div>
     </main>
   );
