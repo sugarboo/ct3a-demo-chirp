@@ -8,6 +8,8 @@ import { UserButton } from "@clerk/nextjs";
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
 
+  const posts = await api.post.getAll();
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
       <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
@@ -42,6 +44,11 @@ export default async function Home() {
           <p className="text-2xl text-white">
             {hello ? hello.greeting : "Loading tRPC query..."}
           </p>
+          <div className="text-white">
+            {posts?.map((post) => (
+              <div key={post.id}>{`${post.name} - ${post.content}`}</div>
+            ))}
+          </div>
         </div>
 
         <CrudShowcase />
