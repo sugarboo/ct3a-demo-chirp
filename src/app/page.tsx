@@ -1,62 +1,90 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { CreatePost } from "~/app/_components/create-post";
+
 import { api } from "~/trpc/server";
+import { type AppRouter } from "~/server/api/root";
+import { type inferRouterOutputs } from "@trpc/server";
 
-import { UserButton } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/clerk-react";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+dayjs.extend(relativeTime)
 
-  const posts = await api.post.getAll();
+const CreatePostWizard = () => {
+  const { user } = useUser()
+
+  if (!user) {
+    return null
+  }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
-        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-          Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-        </h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-            href="https://create.t3.gg/en/usage/first-steps"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">First Steps →</h3>
-            <div className="text-lg">
-              Just the basics - Everything you need to know to set up your
-              database and authentication.
+    <div className="flex w-full gap-3">
+      <Image
+        src={user.imageUrl}
+        alt="Profile image"
+        className="w-14 h-14 rounded-full"
+      />
+      <input type="text" placeholder="Type some emojis!" className="grow bg-transparent outline-none" />
+    </div>
+  )
+}
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type PostWithUser = RouterOutputs['post']['getAll'][number]
+
+const PostView = (props: PostWithUser) => {
+  const { post, author } = props
+
+  return (
+    <div key={post.id} className="flex gap-3 border-b border-slate-400 p-4">
+      <Image
+        src={author.profileImageUrl}
+        className="w-14 h-14 rounded-full"
+        alt={`@${author.username}'s profile picture`}
+      />
+      <div className="flex flex-col">
+        <div className="flex gap-1 text-slate-300">
+          <span>{`@${author.username} `}</span>
+          <span className="font-thin">{` · ${dayjs(post.createdAt).fromNow()}`}</span>
+        </div>
+        <span>{post.content}</span>
+      </div>
+    </div>
+  )
+}
+
+export default async function Home() {
+  const user = useUser();
+  
+  const { data, isLoading } = api.post.getAll.useQuery();
+
+  if (!isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (!data) {
+    return <div>Something went wrong...</div>
+  }
+
+  return (
+    <main className="flex h-screen justify-center">
+      <div className="h-full w-full border-x border-slate-400 md:max-w-2xl">
+        <div className="flex border-b border-slate-400 p-4">
+          {!user.isSignedIn && (
+            <div className="flex justify-center">
+              <SignInButton />
             </div>
-          </Link>
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-            href="https://create.t3.gg/en/introduction"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">Documentation →</h3>
-            <div className="text-lg">
-              Learn more about Create T3 App, the libraries it uses, and how to
-              deploy it.
-            </div>
-          </Link>
+          )}
+          {user.isSignedIn && <CreatePostWizard />}
         </div>
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-2xl text-white">
-            {hello ? hello.greeting : "Loading tRPC query..."}
-          </p>
-          <div className="text-white">
-            {posts?.map((post) => (
-              <div key={post.id}>{`${post.name} - ${post.content}`}</div>
-            ))}
-          </div>
+        <div className="flex flex-col">
+          {[...data, ...data]?.map((fullPost) => (
+            <PostView {...fullPost} key={fullPost.post.id} />
+          ))}
         </div>
-
-        <CrudShowcase />
-
-        <div className="w-16 h-16">
-          <UserButton />
-        </div>
-
       </div>
     </main>
   );
